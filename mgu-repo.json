@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "components": [
+    {
+      "id": "vr-hud-turn",
+      "kind": "tool",
+      "path": "tools/vr-hud-turn"
+    },
+    {
+      "id": "vr-warmup",
+      "kind": "tool",
+      "path": "tools/vr-warmup"
+    }
+  ]
+}

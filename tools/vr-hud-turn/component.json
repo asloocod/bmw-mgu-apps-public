@@ -1,0 +1,85 @@
+{
+  "id": "vr-hud-turn",
+  "kind": "tool",
+  "version": "0.1.2",
+  "title": "Поворотники на HUD",
+  "description": "Стрелки поворотников на проекционном дисплее: мигают в такт, при аварийке обе. Рисует через Cluster renderer, машину только читает.",
+  "mguHmi": [
+    "ID7"
+  ],
+  "requires": {
+    "cluster-render": "0.4.1",
+    "mgu-deploy": "0.4.0"
+  },
+  "uninstallable": true,
+  "files": [
+    {
+      "path": "arrow.js",
+      "from": "arrow.js",
+      "mode": "0644"
+    },
+    {
+      "path": "blinker.js",
+      "from": "blinker.js",
+      "mode": "0644"
+    },
+    {
+      "path": "config.js",
+      "from": "config.js",
+      "mode": "0644"
+    },
+    {
+      "path": "eventlog.js",
+      "from": "eventlog.js",
+      "mode": "0644"
+    },
+    {
+      "path": "hud.js",
+      "from": "hud.js",
+      "mode": "0644"
+    },
+    {
+      "path": "main.js",
+      "from": "main.js",
+      "mode": "0644"
+    },
+    {
+      "path": "oapgen.js",
+      "from": "oapgen.js",
+      "mode": "0644"
+    },
+    {
+      "path": "signal.js",
+      "from": "signal.js",
+      "mode": "0644"
+    },
+    {
+      "path": "someip.js",
+      "from": "someip.js",
+      "mode": "0644"
+    },
+    {
+      "path": "LICENSE.idrive7-apps",
+      "from": "LICENSE.idrive7-apps",
+      "mode": "0644"
+    }
+  ],
+  "units": [
+    {
+      "name": "vr-hud-turn.service",
+      "from": "vr-hud-turn.service"
+    }
+  ],
+  "enable": [
+    {
+      "unit": "vr-hud-turn.service",
+      "target": "multi-user.target"
+    }
+  ],
+  "recmgr": [
+    "vr-hud-turn"
+  ],
+  "restart": [
+    "vr-hud-turn.service"
+  ]
+}

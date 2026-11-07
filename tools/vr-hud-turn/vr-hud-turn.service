@@ -1,0 +1,17 @@
+[Unit]
+Description=vr-hud-turn: turn indicator arrows on the HUD (drawn by cluster-render)
+After=cluster-render.socket
+Wants=cluster-render.socket
+
+[Service]
+# root: the vsomeip policy lets uid 0 subscribe to de.bmw.body.Light. Reads the car only.
+# /run/vr-hud-turn/someip: the interface configs made at each start from MainApp's generator
+RuntimeDirectory=vr-hud-turn
+ExecStart=/usr/bin/node /var/opt/vr-hud-turn/current/main.js
+# the unit's system.conf sends stdout nowhere by default: the log would never reach the journal
+StandardOutput=journal
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
