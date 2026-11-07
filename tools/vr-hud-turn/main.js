@@ -41,6 +41,9 @@ async function run(deps) {
     const hud = createHud(deps.client, shader(cfg), log, { setTimeout: deps.setTimeout, clearTimeout: deps.clearTimeout });
     const lastRaw = {};
     let timer = null, staleTimer = null;
+    // flash starts this turn: an Indicators2 event at least half a cycle after the last one (or the turn's start). Only a
+    // car that sends them (X6 G06: one every 640 ms) can be judged stale; one that sends on change only (X5 G05) cannot.
+    let lastFlash = 0, flashStarts = false;
 
     function update() {
         const t = now();
@@ -56,14 +59,16 @@ async function run(deps) {
         const t = now();
         if (dir === blinker.direction()) return;
         blinker.setDirection(dir, t);
+        lastFlash = t;
+        flashStarts = false;
         log('direction ' + dir + ' at ' + Math.round(t) + (why ? ' (' + why + ')' : ''));
     }
 
-    /* a valid event during a turn holds it for stale_ms more */
+    /* a valid event during a turn holds it for stale_ms more, on a car seen sending flash starts this turn */
     function armStale() {
         if (staleTimer !== null) deps.clearTimeout(staleTimer);
         staleTimer = null;
-        if (!cfg.stale_ms || blinker.direction() === 'none') return;
+        if (!cfg.stale_ms || !flashStarts || blinker.direction() === 'none') return;
         staleTimer = deps.setTimeout(() => {
             staleTimer = null;
             setDirection('none', 'stale: no indicator event for ' + cfg.stale_ms + ' ms');
@@ -82,7 +87,11 @@ async function run(deps) {
         const dir = signal.decode(payload);
         if (dir === null) return;
         setDirection(dir);
-        if (field === 'StatusFunctionsIndicators2' && cfg.phase === 'light2') blinker.cycle(t);
+        if (field === 'StatusFunctionsIndicators2' && dir !== 'none' && t - lastFlash >= cfg.period_ms / 2) {
+            lastFlash = t;
+            flashStarts = true;
+            if (cfg.phase === 'light2') blinker.cycle(t);
+        }
         armStale();
         update();
     }
