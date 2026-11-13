@@ -2,7 +2,8 @@
 /*
  * arrow.js - the two arrows on cluster-render's HUD canvas (800 x 480 on iDrive 7), as triangles, and the GLSL ES 1.00
  * fragment shader of an effect layer that draws them: uniforms u_left / u_right (0 or 1) light a side, u_y / u_margin /
- * u_size place them (px), so the place changes without a new layer. Everything else is transparent (black, which a HUD
+ * u_size place them (px), u_r / u_g / u_b colour them (0-1, the brightness in them), so place and colour change
+ * without a new layer. Everything else is transparent (black, which a HUD
  * shows as nothing). hit() is the shader's test in JavaScript, for the tests; round(x) is floor(x + 0.5) in both.
  *
  * Left arrow, s = size, m = margin: a head [m, y] [m + head, y - s/2] [m + head, y + s/2], head = round(s * 0.55),
@@ -44,9 +45,8 @@ function f(n) {
     return Number.isInteger(r) ? r.toFixed(1) : String(r);
 }
 
-/* the shader; only the colour is baked in, the place comes from the uniforms */
-function shader(color) {
-    const c = color;
+/* the shader: place and colour come from the uniforms */
+function shader() {
     return [
         '#version 100',
         '#ifdef GL_FRAGMENT_PRECISION_HIGH',
@@ -59,6 +59,9 @@ function shader(color) {
         'uniform float u_y;',
         'uniform float u_margin;',
         'uniform float u_size;',
+        'uniform float u_r;',
+        'uniform float u_g;',
+        'uniform float u_b;',
         'varying vec2 v_uv;',
         'float side(vec2 p, vec2 a, vec2 b) { return (b.x - a.x) * (p.y - a.y) - (b.y - a.y) * (p.x - a.x); }',
         'bool tri(vec2 p, vec2 a, vec2 b, vec2 c) {',
@@ -86,7 +89,7 @@ function shader(color) {
         '    vec2 p = v_uv * vec2(' + f(W) + ', ' + f(H) + ');',
         '    bool l = u_left > 0.5 && arrow(p);',
         '    bool r = u_right > 0.5 && arrow(vec2(' + f(W) + ' - p.x, p.y));',
-        '    gl_FragColor = (l || r) ? vec4(' + f(c[0]) + ', ' + f(c[1]) + ', ' + f(c[2]) + ', 1.0) : vec4(0.0);',
+        '    gl_FragColor = (l || r) ? vec4(u_r, u_g, u_b, 1.0) : vec4(0.0);',
         '}',
         '',
     ].join('\n');

@@ -16,8 +16,8 @@ function createHud(client, fragmentShader, log, opts) {
     let ready = false;
     let check = null;
     let visible = 0;
-    const sent = { u_left: null, u_right: null, u_y: null, u_margin: null, u_size: null };
-    let geom = null;
+    const sent = { u_left: null, u_right: null, u_y: null, u_margin: null, u_size: null, u_r: null, u_g: null, u_b: null };
+    let geom = null, rgb = null;
 
     function sendValue(name, v) {
         if (!ref || sent[name] === v) return;
@@ -26,10 +26,16 @@ function createHud(client, fragmentShader, log, opts) {
     }
     const send = (name, on) => sendValue(name, on ? 1 : 0);
     function sendGeometry() {
-        if (!geom) return;
-        sendValue('u_y', geom.y);
-        sendValue('u_margin', geom.margin);
-        sendValue('u_size', geom.size);
+        if (geom) {
+            sendValue('u_y', geom.y);
+            sendValue('u_margin', geom.margin);
+            sendValue('u_size', geom.size);
+        }
+        if (rgb) {
+            sendValue('u_r', rgb[0]);
+            sendValue('u_g', rgb[1]);
+            sendValue('u_b', rgb[2]);
+        }
     }
 
     return {
@@ -75,6 +81,11 @@ function createHud(client, fragmentShader, log, opts) {
         /* where the arrows are: { y, margin, size }, px of the 800 x 480 canvas; kept until the layer is there */
         setGeometry(g) {
             geom = { y: g.y, margin: g.margin, size: g.size };
+            sendGeometry();
+        },
+        /* the arrows' colour, [r, g, b] 0-1 (the brightness in it); kept until the layer is there */
+        setColor(c) {
+            rgb = [c[0], c[1], c[2]];
             sendGeometry();
         },
         show(s) {

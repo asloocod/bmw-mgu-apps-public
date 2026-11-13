@@ -3,7 +3,7 @@
  * appsettings.js - the offsets the driver set in the vr_hud_turn app (iDrive: "Поворотники на HUD"). The kit keeps them
  * in the app's own data folder: /var/opt/public/oap/oap_<uid>/data/settings.json. The app is found by the name in
  * oap_<uid>/source/package.json (as vr-start-sound finds its app). Each value is checked on its own; a missing or
- * wrong one counts as no offset.
+ * wrong one counts as no offset (green, full brightness).
  */
 const path = require('path');
 
@@ -11,11 +11,14 @@ const APP_ID = 'vr_hud_turn';
 const OAP_ROOT = '/var/opt/public/oap';
 
 const isInt = (lo, hi) => (v) => Number.isInteger(v) && v >= lo && v <= hi;
+const COLOR_NAMES = ['green', 'white', 'yellow', 'orange', 'blue'];     // config.js COLORS
 const KEYS = {
     up: [isInt(-200, 200), 0],          // px higher on the HUD
     up_sport: [isInt(-200, 200), 0],    // the same in Sport
     wide: [isInt(-150, 150), 0],        // px further apart (towards the edges)
     scale: [isInt(50, 200), 100],       // % of the size
+    color: [(v) => COLOR_NAMES.indexOf(v) >= 0, 'green'],
+    brightness: [isInt(10, 100), 100],  // %
 };
 
 /* { dir, gid } of the installed app named appId under oapRoot, or null */
@@ -32,7 +35,7 @@ function findApp(oapRoot, appId, fs) {
     return null;
 }
 
-/* { up, up_sport, wide, scale } from the app's settings (no app, no file: no offsets) */
+/* { up, up_sport, wide, scale, color, brightness } from the app's settings (no app, no file: no offsets) */
 function read(appDir, fs) {
     let s = null;
     if (appDir) {

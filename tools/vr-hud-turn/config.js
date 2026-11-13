@@ -79,4 +79,21 @@ function placement(cfg, mode, app) {
     };
 }
 
-module.exports = { DEFAULTS, merge, load, placement };
+/* the app's colours; green is config.json's `color` (the default [0, 0.85, 0.3]) */
+const COLORS = Object.freeze({
+    green: null,
+    white: Object.freeze([1, 1, 1]),
+    yellow: Object.freeze([1, 0.85, 0]),
+    orange: Object.freeze([1, 0.55, 0]),
+    blue: Object.freeze([0.2, 0.6, 1]),
+});
+
+/* the arrows' colour, [r, g, b] 0-1: the app's colour (else `color`) times its brightness (% , else 100) */
+function look(cfg, app) {
+    const name = app && typeof app.color === 'string' && Object.prototype.hasOwnProperty.call(COLORS, app.color) ? app.color : 'green';
+    const base = COLORS[name] || cfg.color;
+    const k = offset(app, 'brightness', 100) / 100;
+    return base.map((v) => Math.round(clamp(v * k, 0, 1) * 1000) / 1000);
+}
+
+module.exports = { DEFAULTS, COLORS, merge, load, placement, look };

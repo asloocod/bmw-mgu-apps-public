@@ -32,7 +32,7 @@ const control = require('./control');
 const { createRecorder } = require('./recorder');
 const { createShare } = require('./share');
 
-const VERSION = '0.2.1';
+const VERSION = '0.2.2';
 
 const LIGHT = 'de.bmw.body.Light';
 const FES = 'de.bmw.infotainment.drivingexcitement.FES';
@@ -62,7 +62,7 @@ async function run(deps) {
     /* a line for the recording only (log() lines reach it too) */
     const trace = (line) => { if (recorder) recorder.write(line); };
     const blinker = createBlinker(cfg);
-    const hud = createHud(deps.client, shader(cfg.color), log, { setTimeout: deps.setTimeout, clearTimeout: deps.clearTimeout });
+    const hud = createHud(deps.client, shader(), log, { setTimeout: deps.setTimeout, clearTimeout: deps.clearTimeout });
     const readApp = () => (deps.appSettings ? deps.appSettings() : {});
     const lastRaw = {};
     let timer = null, staleTimer = null;
@@ -73,12 +73,14 @@ async function run(deps) {
 
     function place(t) {
         const p = config.placement(cfg, showing(t) && showWhich ? showWhich : driveMode, app);
-        const text = 'y ' + p.y + ' margin ' + p.margin + ' size ' + p.size;
+        const rgb = config.look(cfg, app);
+        const text = 'y ' + p.y + ' margin ' + p.margin + ' size ' + p.size + ' color ' + rgb.join(',');
         if (text !== lastPlace) {
             lastPlace = text;
             log('place ' + text + ' (' + (driveMode || 'mode unknown') + ')');
         }
         hud.setGeometry(p);
+        hud.setColor(rgb);
     }
     // flash starts this turn: an Indicators2 event at least half a cycle after the last one (or the turn's start). Only a
     // car that sends them (X6 G06: one every 640 ms) can be judged stale; one that sends on change only (X5 G05) cannot.
