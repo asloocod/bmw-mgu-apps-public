@@ -1,8 +1,9 @@
 'use strict';
 /*
  * arrow.js - the two arrows on cluster-render's HUD canvas (800 x 480 on iDrive 7), as triangles, and the GLSL ES 1.00
- * fragment shader of an effect layer that draws them: uniforms u_left / u_right (0 or 1) light a side. Everything
- * else is transparent (black, which a HUD shows as nothing). hit() is the shader's test in JavaScript, for the tests.
+ * fragment shader of an effect layer that draws them: uniforms u_left / u_right (0 or 1) light a side, u_y / u_margin /
+ * u_size place them (px), so the place changes without a new layer. Everything else is transparent (black, which a HUD
+ * shows as nothing). hit() is the shader's test in JavaScript, for the tests; round(x) is floor(x + 0.5) in both.
  *
  * Left arrow, s = size, m = margin: a head [m, y] [m + head, y - s/2] [m + head, y + s/2], head = round(s * 0.55),
  * and a shaft from m + head to m + head + round(s * 0.5), round(s * 0.36) high. The right arrow is its mirror image.
@@ -42,11 +43,10 @@ function f(n) {
     const r = +Number(n).toFixed(4);
     return Number.isInteger(r) ? r.toFixed(1) : String(r);
 }
-const v2 = (p) => 'vec2(' + f(p[0]) + ', ' + f(p[1]) + ')';
-const any = (tris) => tris.map((t) => 'tri(p, ' + t.map(v2).join(', ') + ')').join(' || ');
 
-function shader(cfg) {
-    const t = triangles(cfg), c = cfg.color;
+/* the shader; only the colour is baked in, the place comes from the uniforms */
+function shader(color) {
+    const c = color;
     return [
         '#version 100',
         '#ifdef GL_FRAGMENT_PRECISION_HIGH',
@@ -56,6 +56,9 @@ function shader(cfg) {
         '#endif',
         'uniform float u_left;',
         'uniform float u_right;',
+        'uniform float u_y;',
+        'uniform float u_margin;',
+        'uniform float u_size;',
         'varying vec2 v_uv;',
         'float side(vec2 p, vec2 a, vec2 b) { return (b.x - a.x) * (p.y - a.y) - (b.y - a.y) * (p.x - a.x); }',
         'bool tri(vec2 p, vec2 a, vec2 b, vec2 c) {',
@@ -66,10 +69,23 @@ function shader(cfg) {
         '    bool pos = d1 > 0.0 || d2 > 0.0 || d3 > 0.0;',
         '    return !(neg && pos);',
         '}',
+        '/* the left arrow at p; the right one is its mirror image */',
+        'bool arrow(vec2 p) {',
+        '    float head = floor(u_size * 0.55 + 0.5);',
+        '    float shaft = floor(u_size * 0.5 + 0.5);',
+        '    float sh = floor(u_size * 0.36 + 0.5);',
+        '    float x0 = u_margin + head;',
+        '    float x1 = x0 + shaft;',
+        '    float y0 = u_y - sh / 2.0;',
+        '    float y1 = u_y + sh / 2.0;',
+        '    return tri(p, vec2(u_margin, u_y), vec2(x0, u_y - u_size / 2.0), vec2(x0, u_y + u_size / 2.0)) ||',
+        '        tri(p, vec2(x0, y0), vec2(x1, y0), vec2(x1, y1)) ||',
+        '        tri(p, vec2(x0, y0), vec2(x1, y1), vec2(x0, y1));',
+        '}',
         'void main() {',
         '    vec2 p = v_uv * vec2(' + f(W) + ', ' + f(H) + ');',
-        '    bool l = u_left > 0.5 && (' + any(t.left) + ');',
-        '    bool r = u_right > 0.5 && (' + any(t.right) + ');',
+        '    bool l = u_left > 0.5 && arrow(p);',
+        '    bool r = u_right > 0.5 && arrow(vec2(' + f(W) + ' - p.x, p.y));',
         '    gl_FragColor = (l || r) ? vec4(' + f(c[0]) + ', ' + f(c[1]) + ', ' + f(c[2]) + ', 1.0) : vec4(0.0);',
         '}',
         '',

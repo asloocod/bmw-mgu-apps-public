@@ -16,13 +16,20 @@ function createHud(client, fragmentShader, log, opts) {
     let ready = false;
     let check = null;
     let visible = 0;
-    const sent = { u_left: null, u_right: null };
+    const sent = { u_left: null, u_right: null, u_y: null, u_margin: null, u_size: null };
+    let geom = null;
 
-    function send(name, on) {
-        const v = on ? 1 : 0;
+    function sendValue(name, v) {
         if (!ref || sent[name] === v) return;
         sent[name] = v;
         client.uniform(ref, name, [v]);
+    }
+    const send = (name, on) => sendValue(name, on ? 1 : 0);
+    function sendGeometry() {
+        if (!geom) return;
+        sendValue('u_y', geom.y);
+        sendValue('u_margin', geom.margin);
+        sendValue('u_size', geom.size);
     }
 
     return {
@@ -34,6 +41,7 @@ function createHud(client, fragmentShader, log, opts) {
             }
             send('u_left', false);
             send('u_right', false);
+            sendGeometry();
             client.on('ready', () => {
                 ready = true;
                 if (check !== null && opts.clearTimeout) opts.clearTimeout(check);
@@ -63,6 +71,11 @@ function createHud(client, fragmentShader, log, opts) {
             if (!ref || visible === v) return;
             visible = v;
             client.set(ref, { visible: v });
+        },
+        /* where the arrows are: { y, margin, size }, px of the 800 x 480 canvas; kept until the layer is there */
+        setGeometry(g) {
+            geom = { y: g.y, margin: g.margin, size: g.size };
+            sendGeometry();
         },
         show(s) {
             send('u_left', s.left);

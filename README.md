@@ -1,12 +1,13 @@
 # Приложения для BMW с головным устройством MGU (iDrive 7)
 
-Два инструмента для [mgu-store](https://github.com/robertnisipeanu/mgu-store). Ставятся и обновляются из Store,
+Два инструмента и приложение для [mgu-store](https://github.com/robertnisipeanu/mgu-store). Ставятся и обновляются из Store,
 машину только читают и ничего не пишут в её блоки. Рисуют через
 [Cluster renderer](https://github.com/robertnisipeanu/idrive-apps/tree/main/native/cluster-render).
 
 | Инструмент | Что делает | Подробно |
 |---|---|---|
 | «Поворотники на HUD» (`vr-hud-turn`) | Стрелка поворотника на проекционном дисплее мигает в такт реле. При аварийке горят обе стрелки, при мигании от ассистента смены полосы горит стрелка его стороны. | [tools/vr-hud-turn](tools/vr-hud-turn/README.md) |
+| Приложение «Поворотники на HUD» (`vr_hud_turn`) | Настройки стрелок в iDrive: выше или ниже, отдельно для Sport, шире или уже, размер. Там же запись лога и передача его на телефон. | [tools/vr-hud-turn](tools/vr-hud-turn/README.md#приложение-поворотники-на-hud) |
 | «Прогрев двигателя» (`vr-warmup`) | Синий термометр на приборке, пока мотор заведён и масло холоднее 80 °C. Масло прогрелось, значок гаснет. | [tools/vr-warmup](tools/vr-warmup/README.md) |
 
 ## Что нужно
@@ -46,6 +47,10 @@ scene_ids_allowed = 0x010004f0,0x01000400,0x010004f1,0x010004f2
 Почему так, написано в [tools/vr-warmup/README.md](tools/vr-warmup/README.md).
 
 ## Если что-то пошло не так
+
+Для стрелок на HUD лог проще всего снять приложением «Поворотники на HUD»: «Начать запись лога», поездка,
+«Остановить запись лога», затем «Отдать лог на телефон» и файл в Telegram. Подробно в
+[tools/vr-hud-turn/README.md](tools/vr-hud-turn/README.md#лог-для-разбора).
 
 Удалить инструмент можно в Store. Журнал сервиса: `journalctl -u vr-hud-turn` или `journalctl -u vr-warmup`,
 те же строки сохраняются в `/var/opt/<инструмент>/log/events.log`.

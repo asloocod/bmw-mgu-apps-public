@@ -9,12 +9,16 @@
  */
 const path = require('path');
 
+const MUST = 'de.bmw.body.Light';
 const APPMGMT = '/usr/lib/oap-mainapp/src/AppManagement/AppManagement.js';
 
-/* Light only: CDS2.statusIndicate, the other candidate, sent nothing on the car (2026-11-07) */
+/* Light for the indicators (CDS2.statusIndicate, the other candidate, sent nothing on the car, 2026-11-07); FES for the
+ * driving mode, Vehicle2 for the speed (as vr-start-sound) */
 const MANIFEST = {
     proxies: {
         'de.bmw.body.Light': { attributes: { StatusFunctionsIndicators: 's', StatusFunctionsIndicators2: 's' }, instances: '1' },
+        'de.bmw.infotainment.drivingexcitement.FES': { attributes: { statusFESVehicleDynamicSwitchHMI: 'rs' }, instances: '1' },
+        'de.bmw.infotainment.vehicle.Vehicle2': { attributes: { statusCarSpeed2: 'rs' }, instances: '1' },
     },
 };
 
@@ -29,14 +33,29 @@ function loadGenerator(bundlePath, readFileSync) {
     return bundleRequire(m[1]);
 }
 
-/* writes outDir/<interface>.json for every proxy of MANIFEST; returns how many */
+/* writes outDir/<interface>.json for every proxy of MANIFEST, one at a time: an interface this unit's catalog lacks
+ * (deps.log says which) leaves the others working; only Light, the reason for the tool, is a must. Returns how many. */
 function generate(catalogPath, outDir, deps) {
     const db = JSON.parse(deps.readFileSync(catalogPath, 'utf8'));
-    const ifs = deps.generator.generate(db, MANIFEST);
     if (!deps.existsSync(outDir)) deps.mkdirSync(outDir);
-    const ids = Object.keys(ifs);
-    ids.forEach((id) => deps.writeFileSync(path.join(outDir, id.replace(/\./g, '_') + '.json'), JSON.stringify(ifs[id])));
-    return ids.length;
+    let n = 0;
+    Object.keys(MANIFEST.proxies).forEach((iface) => {
+        let ifs;
+        try {
+            const one = {};
+            one[iface] = MANIFEST.proxies[iface];
+            ifs = deps.generator.generate(db, { proxies: one });
+        } catch (e) {
+            if (iface === MUST) throw e;
+            if (deps.log) deps.log('oapgen: ' + iface + ' left out: ' + String(e && e.message ? e.message : e).split('\n')[0]);
+            return;
+        }
+        Object.keys(ifs).forEach((id) => {
+            deps.writeFileSync(path.join(outDir, id.replace(/\./g, '_') + '.json'), JSON.stringify(ifs[id]));
+            n++;
+        });
+    });
+    return n;
 }
 
 module.exports = { APPMGMT, MANIFEST, loadGenerator, generate };
