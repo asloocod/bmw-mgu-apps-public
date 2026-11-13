@@ -1,0 +1,72 @@
+{
+  "id": "vr_xdrive",
+  "title": "Задний привод",
+  "description": "Отключает полный привод до выключения зажигания (VIP G05/G06, команда LMV_FUNKTION). Зажигание без мотора, P, ручник, двойное нажатие. Показывает момент на передней оси.",
+  "version": "0.1.1",
+  "vendor": "custom",
+  "loggingId": "VRXD",
+  "iconGlyph": "RWD",
+  "signals": {
+    "com.harman.infotainment.systemfunctions.tasu.tasu.InternalTasu": {
+      "_instances": "SystemFunctionsInternalTasuInst1",
+      "_methods": [
+        "sendTasuRequest"
+      ],
+      "_broadcasts": [
+        "sendTasuResponse"
+      ]
+    },
+    "de.bmw.infotainment.vehicle.CDS": {
+      "statusEngineSpeed2": "rs"
+    },
+    "de.bmw.infotainment.vehicle.Vehicle2": {
+      "statusCarSpeed2": "rs"
+    },
+    "de.bmw.infrastructure.VehicleInformation": {
+      "statusGearboxDrive": "s",
+      "DataPowerTrain2": "s"
+    },
+    "de.bmw.infrastructure.VehicleCondition": {
+      "VehicleCondition": "s"
+    }
+  },
+  "screens": [
+    {
+      "name": "MAIN",
+      "kind": "menu",
+      "title": "Задний привод",
+      "items": [
+        [
+          "button",
+          "BTN_OFF",
+          "Отключить полный привод"
+        ],
+        [
+          "text",
+          "MODE",
+          ""
+        ],
+        [
+          "text",
+          "ANSWER",
+          ""
+        ],
+        [
+          "text",
+          "READY",
+          ""
+        ],
+        [
+          "text",
+          "TORQUE",
+          ""
+        ],
+        [
+          "text",
+          "UNITS",
+          ""
+        ]
+      ]
+    }
+  ]
+}

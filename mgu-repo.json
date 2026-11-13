@@ -27,6 +27,23 @@
       "id": "vr-warmup",
       "kind": "tool",
       "path": "tools/vr-warmup"
+    },
+    {
+      "id": "vr_xdrive",
+      "kind": "app",
+      "path": "apps/vr_xdrive",
+      "icon": "icon.png",
+      "mguHmi": [
+        "ID7"
+      ],
+      "build": {
+        "python": "kit/tools/build.py",
+        "args": [
+          "{id}"
+        ],
+        "sdk": "oap-sdk",
+        "output": "dist/{id}@{version}.tgz"
+      }
     }
   ]
 }
