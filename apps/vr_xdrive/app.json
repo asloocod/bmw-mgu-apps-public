@@ -2,7 +2,7 @@
   "id": "vr_xdrive",
   "title": "Задний привод",
   "description": "Отключает полный привод до выключения зажигания (VIP G05/G06, команда LMV_FUNKTION). Зажигание без мотора, P, ручник, двойное нажатие. Показывает момент на передней оси.",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "vendor": "custom",
   "loggingId": "VRXD",
   "iconGlyph": "RWD",

@@ -11,6 +11,9 @@ const VIP = 0x39, LMV = 0x19;
 const OFF_WRITE = [0xDB, 0x2F, 0x00];
 const SUPPORTED_VIP = '0F2520';
 const CONFIRM_MS = 6000;
+const MIN_GAP_MS = 150;     // a second press event sooner than this is the same press (an HMI-doubled event)
+// the write goes once: no transport retries (the conditions were checked for this moment, not for 10 s later)
+const WRITE_OPTS = { maxRetries: 0, callTimeoutMs: 2000 };
 const IGNITION = 7;     // VehicleCondition PRUEFEN_ANALYSE_DIAGNOSE: ignition on, engine off
 
 const hex2 = (n) => (n < 16 ? '0' : '') + n.toString(16).toUpperCase();
@@ -23,11 +26,15 @@ function sgbdIndex(uds) {
 }
 
 const s16 = (h, l) => (((h << 8) | l) << 16) >> 16;
-/** 62 DB 32 + 8 bytes: actual / requested front-axle torque (raw / 4 Nm, signed), qualifier (last byte). */
+/**
+ * 62 DB 32 + 8 bytes, LMV_MOMENT as Engine Config reads it: <actual s16> <qualifier u16> <requested s16>
+ * <qualifier u16>, Nm = raw / 4. qualifier = the requested torque's (Engine Config: 0x20/0x21 on, 0xE8 off;
+ * this car's LMV 0F2180 read 0x1B before and after the OFF write).
+ */
 function decodeDb32(uds) {
     if (!uds || uds.length < 11 || uds[0] !== 0x62 || uds[1] !== 0xDB || uds[2] !== 0x32) return null;
     const b = uds.slice(3);
-    return { actual: s16(b[0], b[1]) / 4, requested: s16(b[2], b[3]) / 4, qualifier: b[7] };
+    return { actual: s16(b[0], b[1]) / 4, actualQualifier: (b[2] << 8) | b[3], requested: s16(b[4], b[5]) / 4, qualifier: (b[6] << 8) | b[7] };
 }
 
 /** The only requests this app may send: the one write and three reads. */
@@ -76,15 +83,25 @@ class XDrive {
         this.torque = { now: null, max: null };
         this.answer = '';
         this.armedAt = null; this.busy = false;
+        this.cycle = 0;                 // ignition cycles seen (a reply from an earlier one does not count)
+        this.noLink = false;            // the last read was refused before it left (main.js: no TASU link)
     }
 
-    _send(target, sid, data, timeoutMs) {
+    _send(target, sid, data, timeoutMs, opts) {
         if (!allowed(target, sid, data)) return Promise.reject(new Error('not allowed'));
-        return this.deps.send(target, sid, data, timeoutMs);
+        return this.deps.send(target, sid, data, timeoutMs, opts);
     }
 
     async _read(target, data) {
-        try { return await this._send(target, 0x22, data, 1500); } catch (e) { return null; }
+        try { const r = await this._send(target, 0x22, data, 1500); this.noLink = false; return r; } catch (e) {
+            this.noLink = /no diagnostic link/.test(String(e && e.message || e));
+            return null;
+        }
+    }
+
+    _snapshot() {
+        const d = this.deps.data();
+        return { condition: d.condition, rpm: d.rpm, speed: d.speed, stage: d.stage };
     }
 
     async identify() {
@@ -95,7 +112,7 @@ class XDrive {
 
     /** One press at a time (identification and the write both await): a press meanwhile only says to wait. */
     async press() {
-        if (this.busy) { this.answer = 'Подождите, команда уже отправлена'; return; }
+        if (this.busy) { this.answer = 'Подождите, предыдущее нажатие ещё обрабатывается'; return; }
         this.busy = true;
         try { await this._press(); } finally { this.busy = false; }
     }
@@ -106,7 +123,9 @@ class XDrive {
         const base = { vip: this.vip, missing: r.missing, condition: d.condition, rpm: d.rpm, speed: d.speed, stage: d.stage };
         if (this.vip !== SUPPORTED_VIP) {
             this.armedAt = null;
-            this.answer = 'Этот VIP (' + (this.vip || 'нет ответа') + ') не поддерживается, команда не отправлена';
+            this.answer = this.vip === null && this.noLink ? 'Канал диагностики не готов, команда не отправлена'
+                : this.vip === null ? 'VIP не ответил, команда не отправлена'
+                : 'Этот VIP (' + this.vip + ') не поддерживается, команда не отправлена';
             this.deps.log('press', Object.assign({ result: 'unsupported' }, base));
             return;
         }
@@ -117,6 +136,7 @@ class XDrive {
             return;
         }
         const t = this.deps.now();
+        if (this.armedAt !== null && t - this.armedAt < MIN_GAP_MS) return;     // the same press, doubled
         if (this.armedAt === null || t - this.armedAt > CONFIRM_MS) {
             this.armedAt = t;
             this.answer = 'Нажмите ещё раз в течение 6 с, чтобы отключить полный привод';
@@ -124,19 +144,35 @@ class XDrive {
             return;
         }
         this.armedAt = null;
+        const cycle = this.cycle;
         let reply = null, error = null;
-        try { reply = await this._send(VIP, 0x2E, OFF_WRITE, 3000); } catch (e) { error = String(e && e.message || e); }
-        // no answer, or the call failed after the transport took it: the VIP may have switched xDrive off unheard.
-        // "transport refused" (diag.js _check) means the request never left: the mode stands.
-        if ((error === null && !reply) || (error !== null && !/transport refused/.test(error))) this.mode = 'unknown';
-        if (error !== null) this.answer = 'Канал диагностики недоступен';
-        else if (reply && reply[0] === 0x6E && reply[1] === 0xDB && reply[2] === 0x2F) {
+        try { reply = await this._send(VIP, 0x2E, OFF_WRITE, 3000, WRITE_OPTS); } catch (e) { error = String(e && e.message || e); }
+        const refused = error !== null && /transport refused/.test(error);   // diag.js _check: it never left
+        const yes = !!reply && reply[0] === 0x6E && reply[1] === 0xDB && reply[2] === 0x2F;
+        // no answer, or the call failed after the transport took it: the VIP may have switched xDrive off unheard
+        if ((error === null && !reply) || (error !== null && !refused)) this.mode = 'unknown';
+        if (refused) this.answer = 'Канал диагностики занят, команда не отправлена. Нажмите ещё раз';
+        else if (error !== null) this.answer = 'Канал диагностики не ответил, режим неизвестен';
+        else if (yes && cycle !== this.cycle) {
+            // the yes came after an ignition off: the VIP's switch-off belonged to a cycle that is over
+            this.mode = 'unknown';
+            this.answer = 'VIP ответил после выключения зажигания, режим неизвестен';
+        } else if (yes) {
             this.mode = 'rwd';
             this.answer = 'Принято. Заводите (тормоз + Start), не выключая зажигание';
         } else if (reply && reply[0] === 0x7F) this.answer = nrcText(reply[2]);
         else if (!reply) this.answer = 'Нет ответа от VIP';
         else this.answer = 'Непонятный ответ VIP: ' + bytesHex(reply);
-        this.deps.log('press', Object.assign({ result: 'sent', request: '2E DB 2F 00', reply: bytesHex(reply), error: error, mode: this.mode }, base));
+        this.deps.log('press', Object.assign({ result: 'sent', request: '2E DB 2F 00', reply: bytesHex(reply), error: error, mode: this.mode,
+            after: this._snapshot() }, base));
+    }
+
+    /** A 6E DB 2F from the VIP that was not the answer to our write: another app switched xDrive (off or on). */
+    onForeignWrite() {
+        if (this.busy) return;          // ours is in flight: the reply is ours
+        this.deps.log('foreign_write', { was: this.mode });
+        this.mode = 'unknown';
+        this.answer = 'VIP принял команду от другого приложения, режим неизвестен';
     }
 
     /** VehicleCondition: 1-6 = ignition off, the VIP has given xDrive back. */
@@ -146,7 +182,7 @@ class XDrive {
                 this.deps.log('ignition_off', { condition: n, was: this.mode });
                 this.answer = '';           // the last cycle's answer («Принято…») no longer holds
             }
-            this.mode = 'awd'; this.torque.max = null; this.armedAt = null;
+            this.mode = 'awd'; this.torque.max = null; this.armedAt = null; this.cycle++;
         }
     }
 
@@ -157,7 +193,8 @@ class XDrive {
         if (t && typeof d.speed === 'number' && d.speed > MOVING_KMH) {
             const a = Math.abs(t.actual);
             if (this.torque.max === null || a > this.torque.max) this.torque.max = a;
-            this.deps.log('db32', { actual: t.actual, requested: t.requested, qualifier: t.qualifier, speed: d.speed, rpm: d.rpm, mode: this.mode });
+            this.deps.log('db32', { actual: t.actual, actualQualifier: t.actualQualifier, requested: t.requested, qualifier: t.qualifier,
+                speed: d.speed, rpm: d.rpm, mode: this.mode });
         }
     }
 
