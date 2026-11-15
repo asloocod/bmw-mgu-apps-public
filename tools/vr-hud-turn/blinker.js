@@ -4,9 +4,9 @@
  *
  * An anchor is the start of a lit phase; the arrows of the current direction are lit while
  * (t - anchor) mod period_ms < period_ms * duty. Turning on (or to another direction) anchors at that moment:
- * BMW's flasher starts with a flash. A flash start from the car (Light.StatusFunctionsIndicators2, sent at every
- * flash start and again ~80 ms later, probe 2 on the car) moves the anchor to it when it comes at least half a
- * cycle after the anchor, so the repeat is ignored. The same direction reported again changes nothing.
+ * BMW's flasher starts with a flash. A flash start from the car (Light.StatusFunctionsIndicators2 repeating its value,
+ * sent at every flash start and again ~80 ms later on the X6 G06, probe 2 on the car; main.js picks the repeats) moves
+ * the anchor to it when it comes at least half a cycle after the anchor, so the 80 ms repeat is ignored. The same direction reported again changes nothing.
  * Times are the caller's (ms); nothing here reads a clock.
  */
 

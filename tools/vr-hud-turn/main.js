@@ -32,7 +32,7 @@ const control = require('./control');
 const { createRecorder } = require('./recorder');
 const { createShare } = require('./share');
 
-const VERSION = '0.2.2';
+const VERSION = '0.2.3';
 
 const LIGHT = 'de.bmw.body.Light';
 const FES = 'de.bmw.infotainment.drivingexcitement.FES';
@@ -82,8 +82,11 @@ async function run(deps) {
         hud.setGeometry(p);
         hud.setColor(rgb);
     }
-    // flash starts this turn: an Indicators2 event at least half a cycle after the last one (or the turn's start). Only a
-    // car that sends them (X6 G06: one every 640 ms) can be judged stale; one that sends on change only (X5 G05) cannot.
+    // flash starts this turn: an Indicators2 event that repeats the previous Indicators2 value, at least half a cycle after
+    // the last flash start (or the turn's start). Only a car that sends them (X6 G06: one every 640 ms) can be judged stale;
+    // one that sends on change only (X5 G05) cannot. A changed value is a state change, never a flash start: the G05 sends
+    // TIPP -> DAUERBLINKEN -> DAUER_EIN 0.3-1.6 s into a turn (Nikita's log 2026-11-15), and the value has nothing that
+    // changes with the lamp (control / active / overlay only), so the G06's flash starts all carry the same value.
     let lastFlash = 0, flashStarts = false;
 
     function update() {
@@ -125,14 +128,15 @@ async function run(deps) {
         const t = now();
         let raw;
         try { raw = JSON.stringify(payload); } catch (e) { raw = String(payload); }
-        if (lastRaw[field] !== raw) {
+        const repeat = lastRaw[field] === raw;
+        if (!repeat) {
             lastRaw[field] = raw;
             log('Light.' + field + ' ' + raw + ' at ' + Math.round(t));
         } else trace('Light.' + field + ' ' + raw + ' at ' + Math.round(t));
         const dir = signal.decode(payload);
         if (dir === null) return;
         setDirection(dir);
-        if (field === 'StatusFunctionsIndicators2' && dir !== 'none' && t - lastFlash >= cfg.period_ms / 2) {
+        if (field === 'StatusFunctionsIndicators2' && repeat && dir !== 'none' && t - lastFlash >= cfg.period_ms / 2) {
             lastFlash = t;
             flashStarts = true;
             if (cfg.phase === 'light2') blinker.cycle(t);
