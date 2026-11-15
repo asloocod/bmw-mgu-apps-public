@@ -1,0 +1,163 @@
+{
+  "id": "vr_strobe",
+  "title": "Строб",
+  "description": "Строб штатными противотуманками и фарами для шоу на закрытой площадке: левая сторона мигает, потом правая, по кругу (BDC LICHT_AUSGANG E3B5, FLM2 FLM_KANAL A54B). Пока строб включён, штатный свет может не гореть.",
+  "version": "0.3.1",
+  "vendor": "custom",
+  "loggingId": "VRSB",
+  "iconGlyph": "strobe",
+  "signals": {
+    "com.harman.infotainment.systemfunctions.tasu.tasu.InternalTasu": {
+      "_instances": "SystemFunctionsInternalTasuInst1",
+      "_methods": [
+        "sendTasuRequest"
+      ],
+      "_broadcasts": [
+        "sendTasuResponse"
+      ]
+    }
+  },
+  "screens": [
+    {
+      "name": "MAIN",
+      "kind": "menu",
+      "title": "Строб",
+      "settings": true,
+      "items": [
+        [
+          "button",
+          "BTN_TOGGLE",
+          "Включить строб"
+        ],
+        [
+          "text",
+          "STATUS",
+          ""
+        ],
+        [
+          "text",
+          "NOTE",
+          "Только на закрытой площадке. Пока строб включён, штатный свет может не гореть"
+        ]
+      ]
+    }
+  ],
+  "settings": [
+    {
+      "key": "light",
+      "label": "Чем мигать",
+      "type": "choice",
+      "default": "fog",
+      "options": [
+        [
+          "fog",
+          "Туманки"
+        ],
+        [
+          "fog_drl",
+          "Туманки + ДХО"
+        ],
+        [
+          "fog_low",
+          "Туманки + ближний"
+        ],
+        [
+          "fog_high",
+          "Туманки + дальний"
+        ],
+        [
+          "low",
+          "Ближний"
+        ],
+        [
+          "high",
+          "Дальний"
+        ],
+        [
+          "drl",
+          "ДХО"
+        ],
+        [
+          "ch9",
+          "Внутренний модуль"
+        ],
+        [
+          "ch7",
+          "Сегменты матрицы"
+        ],
+        [
+          "ch4",
+          "Сегмент 4"
+        ],
+        [
+          "ch5",
+          "Нижние сегменты колец"
+        ],
+        [
+          "ch1",
+          "Поворотник"
+        ],
+        [
+          "ch3",
+          "Канал 3"
+        ]
+      ]
+    },
+    {
+      "key": "speed",
+      "label": "Скорость",
+      "type": "choice",
+      "default": "max",
+      "options": [
+        [
+          "max",
+          "Максимум"
+        ],
+        [
+          "mid",
+          "Средняя"
+        ],
+        [
+          "slow",
+          "Медленная"
+        ]
+      ]
+    },
+    {
+      "key": "perSide",
+      "label": "Вспышек на сторону",
+      "type": "choice",
+      "default": "2",
+      "options": [
+        [
+          "2",
+          "2 вспышки"
+        ],
+        [
+          "3",
+          "3 вспышки"
+        ]
+      ]
+    },
+    {
+      "key": "autoOffMin",
+      "label": "Автовыключение",
+      "type": "choice",
+      "default": "5",
+      "options": [
+        [
+          "1",
+          "1 мин"
+        ],
+        [
+          "5",
+          "5 мин"
+        ],
+        [
+          "10",
+          "10 мин"
+        ]
+      ]
+    }
+  ]
+}
